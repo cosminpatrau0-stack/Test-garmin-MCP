@@ -8,4 +8,9 @@ ordinateur), puis créera un fichier "garmin-data.json" dans ce dossier.
 
 Importe ensuite ce fichier dans l'app RunLab (bouton "Importer mes données").
 
+⚠️ Mac : si macOS dit "privilèges d'accès" ou bloque le fichier :
+  1) Reglages Systeme > Confidentialite et securite > "Ouvrir quand meme"
+  2) Dans Terminal : tape  chmod +x   (avec un espace), glisse run-mac.command
+     dans la fenetre, puis Entree. Ensuite le double-clic marche.
+
 Besoin d'aide ? Voir GUIDE.md à la racine du projet.

@@ -95,6 +95,21 @@ Une fois l'app ouverte une première fois en ligne et installée, oui — le
 tableau de bord fonctionne hors-ligne. Seule la récupération de nouvelles
 données Garmin nécessite Internet.
 
+**Sur Mac : « run-mac.command non ouvert » ou « privilèges d'accès » ?**
+C'est normal quand on télécharge le projet en ZIP (macOS bloque les scripts
+externes). Deux étapes :
+1. *« Apple n'a pas pu confirmer… »* → clique **Terminé** (pas la corbeille !),
+   puis menu  → **Réglages Système** → **Confidentialité et sécurité** →
+   section **Sécurité** → **Ouvrir quand même**.
+2. *« …n'a pas pu être exécuté car vous ne disposez pas des privilèges »* →
+   ouvre **Terminal** (Cmd+Espace → `Terminal`), tape `chmod +x ` (avec un
+   espace), **glisse le fichier `run-mac.command`** dans la fenêtre, puis
+   **Entrée**. Ensuite le double-clic fonctionne.
+
+> Astuce : tu peux aussi tout lancer depuis le Terminal, sans double-clic :
+> `cd ` puis glisse le dossier `fetcher`, Entrée, puis
+> `python3 -m pip install -r requirements.txt` et `python3 fetch_garmin.py`.
+
 **Je ne vois pas certaines zones de FC ?**
 Si une sortie n'a pas le détail des zones, RunLab les estime à partir de ta FC
 moyenne et de ta FC max. Tu peux affiner en réglant ta FC max dans Garmin.

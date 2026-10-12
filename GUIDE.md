@@ -19,11 +19,27 @@ Il y a **2 choses** :
 
 1. Installe **Python** si tu ne l'as pas : https://www.python.org/downloads/
    - Sur **Windows**, pendant l'installation, **coche la case « Add Python to PATH »**.
-2. Ouvre le dossier `fetcher`.
-3. Lance le bon fichier selon ton système :
+
+### Le plus simple sur Mac : le fichier tout-en-un
+
+Utilise **`RunLab-Garmin.command`** (dossier `fetcher`). C'est un **seul fichier
+autonome** : pose-le où tu veux (ex. le Bureau), il n'a besoin d'aucun fichier
+voisin, et il crée `garmin-data.json` juste à côté de lui.
+
+Comme macOS bloque les scripts téléchargés, lance-le **depuis le Terminal**
+(une fois pour toutes) :
+1. Ouvre **Terminal** (Cmd + Espace → `Terminal`).
+2. Tape `chmod +x ` (avec un espace), **glisse le fichier** dans la fenêtre, **Entrée**.
+3. **Glisse à nouveau le fichier** dans la fenêtre, **Entrée** → il démarre.
+
+### Méthode dossier (Mac ou Windows)
+
+Garde tous les fichiers du dossier `fetcher` ensemble, puis :
    - **Mac** : double-clic sur `run-mac.command`
      (si Mac refuse : clic droit → *Ouvrir* → *Ouvrir*).
    - **Windows** : double-clic sur `run-windows.bat`.
+   ⚠️ Ne déplace pas `run-mac.command` tout seul : il lui faut `fetch_garmin.py`
+   et `requirements.txt` à côté. Le fichier tout-en-un ci-dessus évite ce piège.
 4. Une fenêtre noire s'ouvre. La première fois, elle installe le nécessaire (1–2 min).
 5. Entre ton **email Garmin**, ton **mot de passe** (il reste invisible à l'écran),
    et, si Garmin te le demande, le **code de vérification** reçu par mail/SMS.

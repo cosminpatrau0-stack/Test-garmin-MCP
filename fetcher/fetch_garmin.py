@@ -31,7 +31,7 @@ DAYS_ACTIVITIES = int(os.environ.get("RUNLAB_DAYS", "400"))   # historique d'act
 DAYS_WELLNESS = int(os.environ.get("RUNLAB_WELLNESS_DAYS", "120"))  # sommeil / FC repos / stress
 HR_ZONE_LIMIT = int(os.environ.get("RUNLAB_HRZONES", "80"))   # nb de courses récentes avec détail zones FC
 TOKEN_DIR = os.path.join(os.path.expanduser("~"), ".garminconnect")
-OUTPUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "garmin-data.json")
+OUTPUT = os.environ.get("RUNLAB_OUT") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "garmin-data.json")
 
 
 def log(msg):

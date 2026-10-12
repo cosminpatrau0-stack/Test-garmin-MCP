@@ -1,0 +1,11 @@
+RunLab Fetcher — récupère tes données Garmin
+
+👉 Mac     : double-clique sur  run-mac.command
+👉 Windows : double-clique sur  run-windows.bat
+
+Il te demandera ton email et ton mot de passe Garmin (ils restent sur ton
+ordinateur), puis créera un fichier "garmin-data.json" dans ce dossier.
+
+Importe ensuite ce fichier dans l'app RunLab (bouton "Importer mes données").
+
+Besoin d'aide ? Voir GUIDE.md à la racine du projet.

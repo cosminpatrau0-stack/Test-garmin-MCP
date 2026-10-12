@@ -1,0 +1,11 @@
+# Environnement Python de l'outil de récupération
+fetcher/.venv/
+**/__pycache__/
+*.pyc
+
+# TES données perso : ne JAMAIS les publier sur GitHub
+fetcher/garmin-data.json
+garmin-data.json
+
+# Divers
+.DS_Store

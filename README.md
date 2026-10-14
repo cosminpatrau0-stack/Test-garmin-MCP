@@ -28,7 +28,7 @@ Tout est pensé **course à pied**.
 | `index.html`, `app.js`, `charts.js`, `styles.css` | L'app (PWA installable, hors-ligne) |
 | `manifest.webmanifest`, `service-worker.js`, `icons/` | Rend l'app installable sur le téléphone |
 | `sample-data.json` | Données de démo (bouton « Voir une démo ») |
-| `fetcher/` | L'outil qui récupère tes données Garmin |
+| `fetcher/` | Outils de récupération Garmin (connexion live **ou** conversion de l'export officiel) |
 | `GUIDE.md` | Mode d'emploi non-technique |
 
 ## Confidentialité

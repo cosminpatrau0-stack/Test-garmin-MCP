@@ -32,6 +32,20 @@ Comme macOS bloque les scripts téléchargés, lance-le **depuis le Terminal**
 2. Tape `chmod +x ` (avec un espace), **glisse le fichier** dans la fenêtre, **Entrée**.
 3. **Glisse à nouveau le fichier** dans la fenêtre, **Entrée** → il démarre.
 
+### Tu as fait l'export officiel Garmin ? (le gros ZIP)
+
+Si tu as demandé *« Exporter vos données »* depuis ton compte Garmin et reçu un
+gros fichier ZIP, pas besoin de l'outil ci-dessus : convertis-le directement.
+
+```bash
+cd fetcher
+python3 convert_garmin_export.py  CHEMIN/DU/export-garmin.zip
+```
+
+(Astuce : tape `python3 convert_garmin_export.py ` puis **glisse le ZIP** dans
+le Terminal, puis Entrée.) Ça crée `garmin-data.json` à côté du ZIP, prêt à
+importer dans l'app.
+
 ### Méthode dossier (Mac ou Windows)
 
 Garde tous les fichiers du dossier `fetcher` ensemble, puis :

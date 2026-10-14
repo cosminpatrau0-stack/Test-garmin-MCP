@@ -107,8 +107,8 @@
 
   /* ================= VOLUME / PMC / ALLURE ================= */
   function renderVolume(per, all) {
-    Charts.bars(byId("chart-volume"), weeklyVolume(per.length ? per : all, 16).map(w => ({ label: dmy(new Date(w.ws)), value: w.km })),
-      { valueFmt: v => Math.round(v), labelEvery: 2 });
+    Charts.bars(byId("chart-volume"), weeklyVolume(per.length ? per : all, 16).map(w => ({ label: dmy(new Date(w.ws)), full: "semaine du " + dmy(new Date(w.ws)), value: w.km })),
+      { valueFmt: v => fmtKm(v), unit: " km", labelEvery: 2 });
   }
 
   function pmc() {
@@ -297,9 +297,60 @@
       if (a.avg_cadence) extra.push(a.avg_cadence + " spm");
       if (a.avg_power) extra.push(a.avg_power + " W");
       if (a.aerobic_te) extra.push("TE " + a.aerobic_te);
-      return `<div class="act"><div><div class="name">${escapeHtml(a.name)}${a.avg_hr ? `<span class="badge">${a.avg_hr} bpm</span>` : ""}</div><div class="meta">${longDate(a.date)}${extra.length ? " · " + extra.join(" · ") : ""}</div></div><div class="nums"><div class="big">${fmtKm(a.distance_km)} km</div><div class="meta">${fmtPace(a.avg_pace_s_per_km)} /km · ${fmtDur(a.moving_s)}</div></div></div>`;
+      return `<div class="act" data-act="${a.id}"><div><div class="name">${escapeHtml(a.name)}${a.avg_hr ? `<span class="badge">${a.avg_hr} bpm</span>` : ""}</div><div class="meta">${longDate(a.date)}${extra.length ? " · " + extra.join(" · ") : ""}</div></div><div class="nums"><div class="big">${fmtKm(a.distance_km)} km</div><div class="meta">${fmtPace(a.avg_pace_s_per_km)} /km · ${fmtDur(a.moving_s)}</div></div><div class="chev">›</div></div>`;
     }).join("");
   }
+
+  function openActivity(id) {
+    const a = runs().find(x => String(x.id) === String(id)) || allActs().map(x => ({ ...x, date: parseDate(x.start) })).find(x => String(x.id) === String(id));
+    if (!a) return;
+    byId("act-title").textContent = a.name || "Activité";
+    const S = [];
+    const row = (k, v) => { if (v != null && v !== "" && v !== "—") S.push(`<div class="dstat"><div class="k">${k}</div><div class="v">${v}</div></div>`); };
+    row("Distance", `${fmtKm(a.distance_km)}<small> km</small>`);
+    row("Durée", fmtDur(a.moving_s));
+    if (a.duration_s && a.duration_s !== a.moving_s) row("Temps écoulé", fmtDur(a.duration_s));
+    row("Allure moyenne", a.avg_pace_s_per_km ? `${fmtPace(a.avg_pace_s_per_km)}<small> /km</small>` : null);
+    if (a.gap_pace_s_per_km && Math.abs(a.gap_pace_s_per_km - a.avg_pace_s_per_km) > 2) row("Allure ajustée (GAP)", `${fmtPace(a.gap_pace_s_per_km)}<small> /km</small>`);
+    row("FC moyenne", a.avg_hr ? `${a.avg_hr}<small> bpm</small>` : null);
+    row("FC max", a.max_hr ? `${a.max_hr}<small> bpm</small>` : null);
+    row("Cadence", a.avg_cadence ? `${a.avg_cadence}<small> spm</small>` : null);
+    row("Longueur de foulée", a.avg_stride_m ? `${a.avg_stride_m}<small> m</small>` : null);
+    row("Contact au sol", a.avg_gct_ms ? `${a.avg_gct_ms}<small> ms</small>` : null);
+    row("Oscillation vert.", a.avg_vosc_cm ? `${a.avg_vosc_cm}<small> cm</small>` : null);
+    row("Ratio vertical", a.avg_vratio ? `${a.avg_vratio}<small> %</small>` : null);
+    row("Puissance moy.", a.avg_power ? `${a.avg_power}<small> W</small>` : null);
+    if (a.norm_power) row("Puissance norm.", `${a.norm_power}<small> W</small>`);
+    row("Dénivelé +", a.elevation_gain_m ? `${a.elevation_gain_m}<small> m</small>` : null);
+    row("Calories", a.calories ? `${a.calories}<small> kcal</small>` : null);
+    row("Pas", a.steps || null);
+    row("VO2max", a.vo2max || null);
+    if (a.aerobic_te) row("Effet aérobie", a.aerobic_te + (a.te_label ? ` <small>${esc(prettyTE(a.te_label))}</small>` : ""));
+    if (a.anaerobic_te) row("Effet anaérobie", a.anaerobic_te);
+    if (a.feel != null) row("Ressenti", `${a.feel}<small> /100</small>`);
+    if (a.bb_cost != null) row("Body Battery", `${a.bb_cost}`);
+
+    let html = `<div class="detail-head"><span class="big">${fmtKm(a.distance_km)} km</span><span class="muted">${a.date ? longDate(a.date) : ""} · ${typeLabel(a.type)}</span></div>`;
+    html += `<div class="dgrid">${S.join("")}</div>`;
+    const hasHrz = a.hr_zones && a.hr_zones.length, hasPz = a.power_zones && a.power_zones.length;
+    if (hasHrz) html += `<div class="detail-sub">Zones de fréquence cardiaque</div><div class="chart" id="act-hrz"></div>`;
+    if (hasPz) html += `<div class="detail-sub">Zones de puissance</div><div class="chart" id="act-pz"></div>`;
+    byId("act-body").innerHTML = html;
+
+    const colors = ["var(--z1)", "var(--z2)", "var(--z3)", "var(--z4)", "var(--z5)"];
+    const znames = ["Z1 · récup", "Z2 · endurance", "Z3 · tempo", "Z4 · seuil", "Z5 · VO2max"];
+    const zbar = (cont, zones) => {
+      const arr = [0, 0, 0, 0, 0]; zones.forEach(z => { if (z.zone >= 1 && z.zone <= 5) arr[z.zone - 1] = z.seconds; });
+      const tot = arr.reduce((x, y) => x + y, 0) || 1;
+      Charts.stackedBar(byId(cont), arr.map((s, i) => ({ label: znames[i], value: s, color: colors[i], display: `${fmtDur(s)} · ${Math.round(s / tot * 100)}%` })));
+    };
+    if (hasHrz) zbar("act-hrz", a.hr_zones);
+    if (hasPz) zbar("act-pz", a.power_zones);
+    byId("act-modal").classList.add("open");
+  }
+  function prettyTE(l) { return String(l).toLowerCase().replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()); }
+  function typeLabel(t) { return { running: "Course", walking: "Marche", hiking: "Randonnée", cycling: "Vélo", strength_training: "Renfo", swimming: "Natation" }[t] || t; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
   /* ================= STATS HERO ================= */
   function statDelta(cur, prev) { if (!prev) return { cls: "flat", txt: "" }; const diff = cur - prev; const pct = Math.round((diff / prev) * 100); if (Math.abs(pct) < 2) return { cls: "flat", txt: "≈ stable" }; return { cls: diff > 0 ? "up" : "down", txt: (diff > 0 ? "▲ " : "▼ ") + Math.abs(pct) + "%" }; }
@@ -419,6 +470,9 @@
     byId("demo-btn").addEventListener("click", () => fetch("sample-data.json").then(r => r.json()).then(j => { if (loadInto(j, false)) toast("Démo chargée"); }).catch(() => toast("Démo indisponible.")));
     ["dragover", "drop"].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
     document.addEventListener("drop", e => { if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+    byId("acts").addEventListener("click", e => { const row = e.target.closest(".act"); if (row && row.dataset.act) openActivity(row.dataset.act); });
+    byId("act-close").addEventListener("click", () => byId("act-modal").classList.remove("open"));
+    byId("act-modal").addEventListener("click", e => { if (e.target.id === "act-modal") byId("act-modal").classList.remove("open"); });
     byId("report-btn").addEventListener("click", openReport);
     byId("modal-close").addEventListener("click", () => byId("modal").classList.remove("open"));
     byId("modal").addEventListener("click", e => { if (e.target.id === "modal") byId("modal").classList.remove("open"); });

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>RunLab</title>
-  <meta name="description" content="Ton tableau de bord running personnel, à partir de tes données Garmin. 100% privé, à coller dans Claude." />
+  <meta name="description" content="Analyse running avancée à partir de tes données Garmin. 100% privé, bilan prêt pour Claude." />
   <meta name="theme-color" content="#ef5a2a" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
@@ -19,19 +19,19 @@
   </header>
 
   <main>
-    <!-- ÉCRAN D'ACCUEIL (aucune donnée) -->
+    <!-- ACCUEIL -->
     <section id="view-empty" class="empty hidden">
       <div class="big-dot">🏃</div>
       <h1>Bienvenue dans RunLab</h1>
-      <p>Ton tableau de bord running personnel, construit à partir de tes vraies données Garmin. Tout reste sur ton appareil — rien n'est envoyé sur Internet.</p>
+      <p>Analyse running avancée à partir de tes vraies données Garmin : progression, VO2max, prédictions de course, dynamique de foulée, efficacité aérobie, récupération. Tout reste sur ton appareil.</p>
       <div class="row" style="justify-content:center">
         <button class="btn primary" id="import-btn2">📂 Importer mes données</button>
         <button class="btn ghost" id="demo-btn">Voir une démo</button>
       </div>
       <div class="steps">
-        <div class="step"><span class="n">1</span><div>Lance l'outil <b>RunLab Fetcher</b> (dossier <code>fetcher</code>) une fois sur ton ordinateur — il crée un fichier <code>garmin-data.json</code>.</div></div>
-        <div class="step"><span class="n">2</span><div>Clique sur <b>Importer mes données</b> ci-dessus et choisis ce fichier.</div></div>
-        <div class="step"><span class="n">3</span><div>Explore tes stats, puis génère ton <b>bilan à coller dans Claude</b>.</div></div>
+        <div class="step"><span class="n">1</span><div>Récupère tes données Garmin (outil <b>fetcher</b> ou export officiel converti) → fichier <code>garmin-data.json</code>.</div></div>
+        <div class="step"><span class="n">2</span><div>Clique sur <b>Importer mes données</b> et choisis ce fichier.</div></div>
+        <div class="step"><span class="n">3</span><div>Explore tes analyses, puis génère ton <b>bilan pour Claude</b>.</div></div>
       </div>
     </section>
 
@@ -54,52 +54,105 @@
         <div class="stat"><div class="label">Temps total</div><div class="value" id="stat-time">—</div></div>
       </div>
 
+      <!-- PROGRESSION -->
+      <div class="card hidden" id="card-progress">
+        <h2>Ta progression</h2>
+        <div class="sub">Évolution sur tout l'historique disponible</div>
+        <div class="mgrid" id="progress-tiles"></div>
+        <div id="vo2-wrap" style="margin-top:14px">
+          <div class="chart-title">VO2max dans le temps</div>
+          <div class="chart" id="chart-vo2"></div>
+        </div>
+      </div>
+
+      <!-- PRÉDICTIONS DE COURSE -->
+      <div class="card hidden" id="card-pred">
+        <h2>Prédictions de course</h2>
+        <div class="sub" id="pred-note"></div>
+        <div class="records" id="pred-tiles" style="margin-bottom:14px"></div>
+        <div class="chart" id="chart-pred"></div>
+      </div>
+
+      <!-- VOLUME -->
       <div class="card">
         <h2>Volume hebdomadaire</h2>
-        <div class="sub">Kilomètres parcourus par semaine</div>
+        <div class="sub">Kilomètres par semaine</div>
         <div class="chart" id="chart-volume"></div>
       </div>
 
-      <div class="card">
-        <h2>Tendance d'allure</h2>
-        <div class="sub">Allure moyenne par sortie — plus haut = plus rapide</div>
-        <div class="chart" id="chart-pace"></div>
-      </div>
-
+      <!-- CHARGE & FORME -->
       <div class="card hidden" id="card-load">
         <div class="row" style="justify-content:space-between">
           <div><h2>Charge & forme</h2><div class="sub">Modèle type PMC (fitness vs fatigue)</div></div>
           <span class="pill good" id="form-pill">—</span>
         </div>
         <div class="chart" id="chart-load"></div>
-        <div class="legend">
-          <span><i style="background:var(--fitness)"></i> Forme (fitness)</span>
-          <span><i style="background:var(--fatigue)"></i> Fatigue</span>
-        </div>
+        <div class="legend"><span><i style="background:var(--fitness)"></i> Forme</span><span><i style="background:var(--fatigue)"></i> Fatigue</span></div>
       </div>
 
+      <!-- ALLURE -->
+      <div class="card">
+        <h2>Tendance d'allure</h2>
+        <div class="sub">Allure par sortie — plus haut = plus rapide</div>
+        <div class="chart" id="chart-pace"></div>
+      </div>
+
+      <!-- EFFICACITÉ AÉROBIE -->
+      <div class="card hidden" id="card-eff">
+        <div class="row" style="justify-content:space-between">
+          <div><h2>Efficacité aérobie</h2><div class="sub">Vitesse par battement — monte = tu cours plus vite à FC égale</div></div>
+          <span class="pill good" id="eff-pill">—</span>
+        </div>
+        <div class="chart" id="chart-eff"></div>
+      </div>
+
+      <!-- DYNAMIQUE DE COURSE -->
+      <div class="card hidden" id="card-dynamics">
+        <h2>Dynamique de course</h2>
+        <div class="sub">Comment tu cours — valeur actuelle, moyenne et tendance</div>
+        <div class="mgrid" id="dyn-grid"></div>
+      </div>
+
+      <!-- ZONES & INTENSITÉ -->
       <div class="card">
         <h2>Zones de fréquence cardiaque</h2>
         <div class="sub" id="zones-note"></div>
         <div class="chart" id="chart-zones"></div>
+
+        <div class="divider"></div>
+        <div class="row" style="justify-content:space-between">
+          <div><b>Équilibre d'intensité (80/20)</b></div>
+          <span class="pill good" id="polar-pill">—</span>
+        </div>
+        <div class="polbar" id="polar-bar"></div>
+        <div class="legend" id="polar-legend"></div>
+
+        <div id="powerzones-wrap" class="hidden">
+          <div class="divider"></div>
+          <div class="chart-title">Zones de puissance</div>
+          <div class="sub" id="powerzones-note"></div>
+          <div class="chart" id="chart-powerzones"></div>
+        </div>
       </div>
 
+      <!-- RECORDS -->
       <div class="card">
         <h2>Records personnels</h2>
         <div class="sub">Sur l'ensemble de tes données</div>
         <div class="records" id="records"></div>
       </div>
 
+      <!-- RÉCUPÉRATION -->
       <div class="card hidden" id="card-recovery">
         <h2>Récupération</h2>
-        <div class="sub">Sommeil, FC de repos et stress (données bien-être Garmin)</div>
-        <div class="records">
-          <div class="record"><div class="k">FC de repos</div><div class="v" id="rec-rhr">—</div><div class="d" id="rec-rhr-d"></div></div>
-          <div class="record"><div class="k">Sommeil</div><div class="v" id="rec-sleep">—</div><div class="d" id="rec-sleep-d"></div></div>
-          <div class="record"><div class="k">Stress</div><div class="v" id="rec-stress">—</div><div class="d" id="rec-stress-d"></div></div>
-        </div>
+        <div class="sub">HRV, FC de repos, sommeil et bien-être</div>
+        <div class="records" id="recovery-tiles" style="margin-bottom:8px"></div>
+        <div id="hrv-wrap"><div class="chart-title">Variabilité cardiaque (HRV)</div><div class="chart" id="chart-hrv"></div></div>
+        <div id="rhr-wrap"><div class="divider"></div><div class="chart-title">FC de repos</div><div class="chart" id="chart-rhr"></div></div>
+        <div id="sleep-wrap"><div class="divider"></div><div class="chart-title">Stades de sommeil (moyenne/nuit)</div><div class="sub" id="sleep-note"></div><div class="chart" id="chart-sleep"></div></div>
       </div>
 
+      <!-- SORTIES -->
       <div class="card">
         <h2>Dernières sorties</h2>
         <div class="sub">20 plus récentes sur la période</div>
@@ -110,23 +163,16 @@
     </section>
   </main>
 
-  <!-- Bouton flottant : bilan Claude -->
   <button class="btn primary fab hidden" id="report-btn">✨ Bilan pour Claude</button>
 
-  <!-- Fenêtre bilan -->
   <div class="modal-back" id="modal">
     <div class="modal">
-      <header>
-        <h3>Bilan à coller dans Claude</h3>
-        <button class="close-x" id="modal-close">×</button>
-      </header>
+      <header><h3>Bilan à coller dans Claude</h3><button class="close-x" id="modal-close">×</button></header>
       <div class="body">
-        <p class="muted small">Copie ce texte et colle-le dans une conversation Claude. Il contient un résumé clair de ton entraînement + une question prête à l'emploi.</p>
+        <p class="muted small">Copie ce texte et colle-le dans une conversation Claude. Il résume toute ton analyse + une question prête à l'emploi.</p>
         <textarea id="report-text" readonly></textarea>
       </div>
-      <div class="foot">
-        <button class="btn primary" id="copy-btn" style="flex:1">📋 Copier le bilan</button>
-      </div>
+      <div class="foot"><button class="btn primary" id="copy-btn" style="flex:1">📋 Copier le bilan</button></div>
     </div>
   </div>
 
@@ -136,13 +182,9 @@
   <script src="charts.js"></script>
   <script src="app.js"></script>
   <script>
-    // le bouton flottant n'apparaît qu'avec des données
     (function () {
-      const fab = document.getElementById('report-btn');
-      const dash = document.getElementById('view-dash');
-      new MutationObserver(() => {
-        fab.classList.toggle('hidden', dash.classList.contains('hidden'));
-      }).observe(dash, { attributes: true, attributeFilter: ['class'] });
+      const fab = document.getElementById('report-btn'), dash = document.getElementById('view-dash');
+      new MutationObserver(() => fab.classList.toggle('hidden', dash.classList.contains('hidden'))).observe(dash, { attributes: true, attributeFilter: ['class'] });
     })();
   </script>
 </body>

@@ -127,5 +127,31 @@
     return d;
   }
 
-  window.Charts = { bars, lines, stackedBar };
+  // Mini-courbe sans axes (pour les grilles de métriques). values = nombres.
+  function spark(node, values, opts) {
+    opts = opts || {};
+    clear(node);
+    const vals = values.filter(v => v != null && isFinite(v));
+    if (vals.length < 2) { const d = document.createElement("div"); d.className = "muted small"; d.textContent = "—"; node.appendChild(d); return; }
+    const w = 240, h = 60, p = 6;
+    const svg = el("svg", { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none", class: "sparksvg" });
+    let min = Math.min(...vals), max = Math.max(...vals);
+    if (min === max) { max += 1; min -= 1; }
+    const color = opts.color || "var(--accent)";
+    const xFor = i => p + (w - 2 * p) * (i / (values.length - 1));
+    const yFor = v => h - p - (h - 2 * p) * ((v - min) / (max - min));
+    let d = "", first = -1, last = -1;
+    values.forEach((v, i) => {
+      if (v == null || !isFinite(v)) return;
+      if (first < 0) first = i; last = i;
+      d += (d ? " L" : "M") + xFor(i).toFixed(1) + " " + yFor(v).toFixed(1);
+    });
+    const area = d + ` L${xFor(last).toFixed(1)} ${h - p} L${xFor(first).toFixed(1)} ${h - p} Z`;
+    svg.appendChild(el("path", { d: area, fill: color, opacity: 0.12 }));
+    svg.appendChild(el("path", { d, fill: "none", stroke: color, "stroke-width": 2.5, "stroke-linejoin": "round", "stroke-linecap": "round", "vector-effect": "non-scaling-stroke" }));
+    svg.appendChild(el("circle", { cx: xFor(last), cy: yFor(values[last]), r: 3, fill: color }));
+    node.appendChild(svg);
+  }
+
+  window.Charts = { bars, lines, stackedBar, spark };
 })();

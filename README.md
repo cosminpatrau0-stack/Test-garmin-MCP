@@ -13,13 +13,16 @@ navigateur, et t'appartient entièrement.
 ## Ce que ça fait
 
 - 📈 **Volume hebdomadaire**, tendance d'allure, temps total
-- ❤️ **Zones de fréquence cardiaque** (réelles ou estimées)
+- 🚀 **Progression** : VO2max dans le temps, **âge de forme**, **prédictions de course** (5K/10K/semi/marathon)
 - ⚡ **Charge & forme** (modèle type PMC : fitness vs fatigue)
+- 🫀 **Efficacité aérobie** : vitesse par battement (« cours-tu plus vite à FC égale ? »)
+- 🏃 **Dynamique de course** : cadence, longueur de foulée, temps de contact au sol, oscillation verticale, **puissance** — avec tendances
+- ❤️ **Zones FC + puissance** et **équilibre d'intensité 80/20** (polarisation)
 - 🏅 **Records personnels** (5 km, 10 km, semi, marathon, D+…)
-- 😴 **Récupération** (FC de repos, sommeil, stress)
+- 😴 **Récupération avancée** : HRV, FC de repos, **stades de sommeil**, stress, Body Battery, SpO2
 - ✨ **Bilan pour Claude** en un clic, à coller dans une conversation
 
-Tout est pensé **course à pied**.
+Tout est pensé **course à pied**, et exploite en profondeur l'export Garmin.
 
 ## Comment c'est organisé
 

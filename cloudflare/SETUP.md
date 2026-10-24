@@ -21,8 +21,9 @@ directement (sécurité « CORS »), et on ne veut pas mettre ta clé dans l'app
 - Va sur **https://dash.cloudflare.com/sign-up**, crée un compte (email + mot de passe).
 
 ## 3. Crée un Worker
-- Dans le tableau de bord : **Compute (Workers)** → **Workers & Pages** → **Create** → **Create Worker**.
-- Donne-lui un nom (ex. `runlab-garmin`) → **Deploy** (déploie la version par défaut).
+- Dans **Workers & Pages**, tape le bouton bleu **« Create application »**.
+- Choisis **« Start with Hello World! »** (parfois « Create Worker »).
+- Donne-lui un nom (ex. `runlab-garmin`) → **Deploy** (déploie l'exemple par défaut).
 
 ## 4. Colle le code du proxy
 - Sur la page du Worker : **Edit code** (ou **Edit**).

@@ -192,17 +192,33 @@
     per.forEach(a => { if (a[key]) { has = true; a[key].forEach(z => { if (z.zone >= 1 && z.zone <= 5) secs[z.zone - 1] += z.seconds || 0; }); } });
     return has ? secs : null;
   }
+  // Répartition du temps en zones FC : réelle si dispo, sinon estimée via les
+  // seuils Garmin de l'athlète (bien plus juste qu'un simple % de FC max).
+  function hrZoneDist(per) {
+    const real = aggZones(per, "hr_zones");
+    if (real) return { zones: real, estimated: false, byFloors: false };
+    const z = [0, 0, 0, 0, 0];
+    const floors = (profile().hr_zone_floors || []).filter(x => x != null);
+    const useFloors = floors.length === 5;
+    const mhr = maxHR();
+    per.forEach(a => {
+      if (!a.avg_hr || !a.moving_s) return;
+      let i;
+      if (useFloors) { const h = a.avg_hr; i = h < floors[1] ? 0 : h < floors[2] ? 1 : h < floors[3] ? 2 : h < floors[4] ? 3 : 4; }
+      else { const rh = restHR(); const hrr = (a.avg_hr - rh) / Math.max(1, mhr - rh); i = hrr < 0.6 ? 0 : hrr < 0.7 ? 1 : hrr < 0.8 ? 2 : hrr < 0.9 ? 3 : 4; } // Karvonen (%FC réserve)
+      z[i] += a.moving_s;
+    });
+    return { zones: z, estimated: true, byFloors: useFloors };
+  }
   function renderZones(per) {
     const colors = ["var(--z1)", "var(--z2)", "var(--z3)", "var(--z4)", "var(--z5)"];
     const names = ["Z1 · récup", "Z2 · endurance", "Z3 · tempo", "Z4 · seuil", "Z5 · VO2max"];
-    let z = aggZones(per, "hr_zones"), estimated = false;
-    if (!z) {
-      z = [0, 0, 0, 0, 0]; estimated = true; const mhr = maxHR();
-      per.forEach(a => { if (!a.avg_hr || !a.moving_s) return; const p = a.avg_hr / mhr; let i = p < 0.6 ? 0 : p < 0.7 ? 1 : p < 0.8 ? 2 : p < 0.9 ? 3 : 4; z[i] += a.moving_s; });
-    }
+    const zd = hrZoneDist(per); const z = zd.zones;
     const tot = z.reduce((a, b) => a + b, 0) || 1;
     Charts.stackedBar(byId("chart-zones"), z.map((s, i) => ({ label: names[i], value: s, color: colors[i], display: `${fmtDur(s)} · ${Math.round(s / tot * 100)}%` })));
-    byId("zones-note").textContent = estimated ? "Estimation à partir de la FC moyenne." : "Temps réel passé dans chaque zone de FC.";
+    byId("zones-note").textContent = !zd.estimated ? "Temps réel passé dans chaque zone de FC."
+      : zd.byFloors ? "Estimé depuis ta FC moyenne et tes seuils de zones Garmin (le détail par zone n'est pas fourni par l'API)."
+        : "Estimé à partir de ta FC moyenne et de ta FC max.";
 
     // polarisation 80/20
     const easy = z[0] + z[1], mod = z[2], hard = z[3] + z[4];
@@ -238,8 +254,16 @@
     out.push({ k: "Plus longue durée", v: fmtDur(lt.moving_s), d: fmtKm(lt.distance_km) + " km" });
     const paced = r.filter(a => a.distance_km >= 3 && a.avg_pace_s_per_km);
     if (paced.length) { const b = paced.reduce((x, y) => y.avg_pace_s_per_km < x.avg_pace_s_per_km ? y : x); out.push({ k: "Meilleure allure (≥3 km)", v: fmtPace(b.avg_pace_s_per_km) + " /km", d: fmtKm(b.distance_km) + " km · " + longDate(b.date) }); }
-    const eff = (lo, hi, label) => { const c = r.filter(a => a.distance_km >= lo && a.distance_km <= hi && a.moving_s); if (c.length) { const b = c.reduce((x, y) => y.moving_s < x.moving_s ? y : x); out.push({ k: "Meilleur " + label, v: fmtDur(b.moving_s), d: fmtPace(b.avg_pace_s_per_km) + " /km · " + longDate(b.date) }); } };
-    eff(4.7, 5.6, "5 km"); eff(9.5, 10.7, "10 km"); eff(20.5, 21.6, "semi"); eff(41.5, 43, "marathon");
+    // Pour 5/10/semi/marathon : on prend la sortie la plus RAPIDE (meilleure allure)
+    // dans la fenêtre de distance, et on ramène le temps à la distance exacte.
+    const eff = (lo, hi, exact, label) => {
+      const c = r.filter(a => a.distance_km >= lo && a.distance_km <= hi && a.avg_pace_s_per_km);
+      if (!c.length) return;
+      const b = c.reduce((x, y) => y.avg_pace_s_per_km < x.avg_pace_s_per_km ? y : x);
+      const tnorm = Math.round(b.avg_pace_s_per_km * exact);
+      out.push({ k: "Meilleur " + label, v: fmtDur(tnorm), d: fmtPace(b.avg_pace_s_per_km) + " /km · " + fmtKm(b.distance_km) + " km · " + longDate(b.date) });
+    };
+    eff(4.6, 5.8, 5, "5 km"); eff(9.4, 10.9, 10, "10 km"); eff(20.4, 21.8, 21.1, "semi"); eff(41.5, 43.5, 42.195, "marathon");
     const climb = r.reduce((a, b) => (b.elevation_gain_m || 0) > (a.elevation_gain_m || 0) ? b : a);
     if (climb.elevation_gain_m) out.push({ k: "Plus gros dénivelé", v: "+" + Math.round(climb.elevation_gain_m) + " m", d: fmtKm(climb.distance_km) + " km · " + longDate(climb.date) });
     const wk = weeklyVolume(r); if (wk.length) { const b = wk.reduce((x, y) => y.km > x.km ? y : x); out.push({ k: "Semaine la plus chargée", v: fmtKm(b.km) + " km", d: "semaine du " + dmy(new Date(b.ws)) }); }
@@ -478,10 +502,10 @@
     if (dynLines.length) { L.push("\n## Dynamique de course"); dynLines.forEach(x => L.push(x)); L.push("  _(cadence ↑, foulée ↑, temps de contact au sol ↓, oscillation verticale ↓ = plus économique)_"); }
 
     // ---------- Intensité ----------
-    const z = aggZones(per, "hr_zones");
-    if (z) {
+    const zd = hrZoneDist(per); const z = zd.zones;
+    if (z.reduce((a, b) => a + b, 0) > 0) {
       const tot = z.reduce((a, b) => a + b, 0) || 1, names = ["Z1 récup", "Z2 endurance", "Z3 tempo", "Z4 seuil", "Z5 VO2max"];
-      L.push("\n## Répartition de l'intensité (zones FC)");
+      L.push(`\n## Répartition de l'intensité (zones FC)${zd.estimated ? " — estimée depuis la FC moyenne et mes seuils" : ""}`);
       z.forEach((x, i) => { if (x) L.push(`- ${names[i]} : ${fmtDur(x)} (${Math.round(x / tot * 100)}%)`); });
       const easy = Math.round((z[0] + z[1]) / tot * 100), hard = Math.round((z[3] + z[4]) / tot * 100);
       L.push(`- Équilibre : ${easy}% facile / ${Math.round(z[2] / tot * 100)}% modéré / ${hard}% intense`);

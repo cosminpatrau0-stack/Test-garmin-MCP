@@ -167,7 +167,9 @@
       if (pick(ud, ["birthDate"])) profile.birth_date = pick(ud, ["birthDate"]);
     });
     await safe(async () => {
-      const zl = asList(await api("/biometric-service/heartRateZones/v2"));
+      const raw = await api("/biometric-service/heartRateZones/v2");
+      let zl = asList(raw);
+      if (!zl.length && raw && typeof raw === "object") zl = [raw];
       const rz = zl.find(z => (pick(z, ["sport"]) || "").toUpperCase() === "RUNNING") || zl[0];
       if (rz) { const floors = [1, 2, 3, 4, 5].map(i => pick(rz, ["zone" + i + "Floor"])); if (floors.some(x => x != null)) profile.hr_zone_floors = floors; if (pick(rz, ["maxHeartRateUsed"])) profile.max_hr = pick(rz, ["maxHeartRateUsed"]); if (pick(rz, ["restingHeartRateUsed"])) profile.resting_hr = pick(rz, ["restingHeartRateUsed"]); }
     });

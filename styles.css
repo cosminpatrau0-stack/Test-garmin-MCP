@@ -203,5 +203,12 @@ main { max-width: 960px; margin: 0 auto; padding: 16px; }
 .polbar { display: flex; height: 16px; border-radius: 999px; overflow: hidden; margin: 10px 0 8px; background: var(--surface-2); }
 .polseg { height: 100%; }
 
+/* Champs de formulaire (connexion Garmin) */
+.fld { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-top: 12px; }
+.fld input, .fld select { width: 100%; margin-top: 6px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--text); font-size: 15px; font-weight: 500; }
+.fld input:focus, .fld select:focus { outline: none; border-color: var(--accent); }
+.progress { height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin-top: 14px; }
+.progress-bar { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+
 .hidden { display: none !important; }
 footer.credit { text-align: center; color: var(--muted); font-size: 12px; padding: 24px 16px 8px; }

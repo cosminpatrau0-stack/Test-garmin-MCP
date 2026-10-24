@@ -20,7 +20,19 @@ Il y a **2 choses** :
 1. Installe **Python** si tu ne l'as pas : https://www.python.org/downloads/
    - Sur **Windows**, pendant l'installation, **coche la case « Add Python to PATH »**.
 
-### ⭐ Le mieux : la Garmin Personal API (officielle)
+### 📲 100% téléphone (aucun ordinateur) — recommandé
+
+Tu peux tout faire depuis le téléphone, sans jamais importer de fichier :
+l'app RunLab se synchronise directement à Garmin via un **mini-proxy gratuit
+qui t'appartient** (Cloudflare). Configuration unique ~10 min, puis un bouton
+**⟳ Synchroniser** suffit.
+
+👉 Suis **`cloudflare/SETUP.md`** (pas à pas, iPhone & Android), puis dans
+l'app : **📲 Connecter Garmin (API)**.
+
+---
+
+### ⭐ Depuis un ordinateur : la Garmin Personal API (officielle)
 
 Si tu as une **clé Personal API** Garmin (créée sur
 https://connect.garmin.com/app/settings/personalApiToken), c'est la méthode

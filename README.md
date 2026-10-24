@@ -8,6 +8,10 @@ navigateur, et t'appartient entièrement.
 
 👉 **Tu ne codes pas ? Suis le [GUIDE.md](GUIDE.md) pas à pas.**
 
+📲 **100% téléphone** (aucun ordinateur) : branche ta clé Garmin une fois via
+un mini-proxy Cloudflare gratuit, puis l'app se synchronise toute seule.
+Voir **[cloudflare/SETUP.md](cloudflare/SETUP.md)**.
+
 ---
 
 ## Ce que ça fait

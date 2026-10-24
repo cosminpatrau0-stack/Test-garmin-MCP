@@ -1,10 +1,11 @@
 /* RunLab — service worker : rend l'app installable et utilisable hors-ligne. */
-const CACHE = "runlab-v1";
+const CACHE = "runlab-v2";
 const SHELL = [
   "./",
   "index.html",
   "styles.css",
   "charts.js",
+  "garmin-sync.js",
   "app.js",
   "manifest.webmanifest",
   "icons/icon.svg",
@@ -26,6 +27,8 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
+  // ne jamais toucher aux appels externes (proxy Garmin) : toujours le réseau
+  if (new URL(req.url).origin !== self.location.origin) return;
   // réseau d'abord pour les données, cache d'abord pour l'app
   e.respondWith(
     caches.match(req).then(hit => hit || fetch(req).then(res => {

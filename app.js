@@ -371,6 +371,7 @@
     byId("view-empty").classList.add("hidden");
     byId("view-dash").classList.remove("hidden");
     byId("import-btn").classList.remove("hidden");
+    if (settings.syncUrl) byId("sync-btn").classList.remove("hidden");
 
     const days = settings.periodDays, r = runs(), per = inPeriod(r, days);
     const gen = DATA.generated_at ? parseDate(DATA.generated_at) : null;
@@ -446,6 +447,38 @@
   }
   function openReport() { byId("report-text").value = buildReport(); byId("modal").classList.add("open"); }
 
+  /* ================= SYNCHRONISATION GARMIN (API) ================= */
+  function openSync() {
+    if (settings.syncUrl) byId("sync-url").value = settings.syncUrl;
+    if (settings.syncSecret) byId("sync-secret").value = settings.syncSecret;
+    if (settings.syncDays) byId("sync-days").value = String(settings.syncDays);
+    byId("sync-progress").classList.add("hidden");
+    byId("sync-status").textContent = "";
+    byId("sync-bar").style.width = "0";
+    byId("sync-modal").classList.add("open");
+  }
+  async function doSync() {
+    const url = byId("sync-url").value.trim();
+    const secret = byId("sync-secret").value.trim();
+    const days = parseInt(byId("sync-days").value, 10) || 400;
+    if (!url) { toast("Entre l'adresse du proxy."); return; }
+    settings.syncUrl = url; settings.syncSecret = secret; settings.syncDays = days; saveSettings();
+    const go = byId("sync-go"); go.disabled = true;
+    byId("sync-progress").classList.remove("hidden");
+    const setP = (m, p) => { byId("sync-status").textContent = m; byId("sync-bar").style.width = (p || 0) + "%"; };
+    try {
+      if (!window.RunLabSync) throw new Error("module de sync non chargé");
+      const data = await RunLabSync.run({ base: url, secret, days, wellnessDays: Math.min(days, 180) }, setP);
+      if (!data.activities || !data.activities.length) { setP("Aucune activité reçue — vérifie l'adresse, la clé et le code secret.", 100); return; }
+      loadInto(data, true);
+      byId("sync-modal").classList.remove("open");
+      byId("sync-btn").classList.remove("hidden");
+      toast(`Synchronisé ✓ ${data.activities.length} activités`);
+    } catch (e) {
+      setP("Erreur : " + (e && e.message || e), 100);
+    } finally { go.disabled = false; }
+  }
+
   /* ================= IMPORT / PERSISTANCE ================= */
   function validate(o) { return o && typeof o === "object" && Array.isArray(o.activities); }
   function loadInto(o, persist) { if (!validate(o)) { toast("Fichier non reconnu."); return false; } DATA = o; if (persist !== false) { try { localStorage.setItem(STORE_KEY, JSON.stringify(o)); } catch (e) { } } render(); return true; }
@@ -467,6 +500,11 @@
     const fi = byId("file"); fi.addEventListener("change", e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
     byId("import-btn").addEventListener("click", () => fi.click());
     byId("import-btn2").addEventListener("click", () => fi.click());
+    byId("connect-btn").addEventListener("click", openSync);
+    byId("sync-btn").addEventListener("click", openSync);
+    byId("sync-close").addEventListener("click", () => byId("sync-modal").classList.remove("open"));
+    byId("sync-modal").addEventListener("click", e => { if (e.target.id === "sync-modal") byId("sync-modal").classList.remove("open"); });
+    byId("sync-go").addEventListener("click", doSync);
     byId("demo-btn").addEventListener("click", () => fetch("sample-data.json").then(r => r.json()).then(j => { if (loadInto(j, false)) toast("Démo chargée"); }).catch(() => toast("Démo indisponible.")));
     ["dragover", "drop"].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
     document.addEventListener("drop", e => { if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });

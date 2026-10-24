@@ -15,7 +15,8 @@
   <header class="app">
     <div class="logo"><span class="dot">🏃</span> RunLab</div>
     <div class="spacer"></div>
-    <button class="btn hidden" id="import-btn">↻ Mettre à jour</button>
+    <button class="btn hidden" id="sync-btn">⟳ Synchroniser</button>
+    <button class="btn hidden" id="import-btn">📂</button>
   </header>
 
   <main>
@@ -25,7 +26,8 @@
       <h1>Bienvenue dans RunLab</h1>
       <p>Analyse running avancée à partir de tes vraies données Garmin : progression, VO2max, prédictions de course, dynamique de foulée, efficacité aérobie, récupération. Tout reste sur ton appareil.</p>
       <div class="row" style="justify-content:center">
-        <button class="btn primary" id="import-btn2">📂 Importer mes données</button>
+        <button class="btn primary" id="connect-btn">📲 Connecter Garmin (API)</button>
+        <button class="btn ghost" id="import-btn2">📂 Importer un fichier</button>
         <button class="btn ghost" id="demo-btn">Voir une démo</button>
       </div>
       <div class="steps">
@@ -176,6 +178,34 @@
     </div>
   </div>
 
+  <!-- Connexion / synchronisation Garmin -->
+  <div class="modal-back" id="sync-modal">
+    <div class="modal">
+      <header><h3>Connecter Garmin</h3><button class="close-x" id="sync-close">×</button></header>
+      <div class="body">
+        <p class="muted small">Entre l'adresse de ton proxy Cloudflare et ton code secret (créés une seule fois — voir le guide). Ta clé Garmin reste dans le proxy, jamais ici.</p>
+        <label class="fld">Adresse du proxy
+          <input type="url" id="sync-url" inputmode="url" autocomplete="off" placeholder="https://mon-proxy.xxx.workers.dev" />
+        </label>
+        <label class="fld">Code secret
+          <input type="password" id="sync-secret" autocomplete="off" placeholder="le PROXY_SECRET que tu as choisi" />
+        </label>
+        <label class="fld">Historique à récupérer
+          <select id="sync-days">
+            <option value="120">4 mois</option>
+            <option value="400" selected>~1 an</option>
+            <option value="900">~2 ans</option>
+          </select>
+        </label>
+        <div class="progress hidden" id="sync-progress"><div class="progress-bar" id="sync-bar"></div></div>
+        <div class="muted small" id="sync-status"></div>
+      </div>
+      <div class="foot">
+        <button class="btn primary" id="sync-go" style="flex:1">⟳ Synchroniser maintenant</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Détail d'une activité -->
   <div class="modal-back" id="act-modal">
     <div class="modal">
@@ -188,6 +218,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="charts.js"></script>
+  <script src="garmin-sync.js"></script>
   <script src="app.js"></script>
   <script>
     (function () {

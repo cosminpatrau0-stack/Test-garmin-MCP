@@ -31,7 +31,7 @@ Tout est pensé **course à pied**, et exploite en profondeur l'export Garmin.
 | `index.html`, `app.js`, `charts.js`, `styles.css` | L'app (PWA installable, hors-ligne) |
 | `manifest.webmanifest`, `service-worker.js`, `icons/` | Rend l'app installable sur le téléphone |
 | `sample-data.json` | Données de démo (bouton « Voir une démo ») |
-| `fetcher/` | Outils de récupération Garmin (connexion live **ou** conversion de l'export officiel) |
+| `fetcher/` | Outils de récupération Garmin : **Personal API officielle** (`fetch_garmin_api.py`), connexion live, ou conversion de l'export ZIP officiel |
 | `GUIDE.md` | Mode d'emploi non-technique |
 
 ## Confidentialité
@@ -60,13 +60,22 @@ Ouvre cette adresse sur ton téléphone puis « Ajouter à l'écran d'accueil »
 
 ## Lancer l'outil de récupération (résumé)
 
+**Recommandé — Garmin Personal API officielle** (clé créée sur
+`connect.garmin.com/app/settings/personalApiToken`) :
+```bash
+cd fetcher
+python3 -m pip install -r requirements-api.txt
+python3 fetch_garmin_api.py      # (ou double-clic sur RunLab-API.command)
+```
+
+Alternative — connexion login :
 ```bash
 cd fetcher
 python3 -m pip install -r requirements.txt
-python3 fetch_garmin.py
+python3 fetch_garmin.py          # (ou double-clic sur run-mac.command / run-windows.bat)
 ```
 
-(Ou double-clic sur `run-mac.command` / `run-windows.bat`.)
+Alternative — export officiel ZIP : `python3 convert_garmin_export.py export.zip`
 
 Le fichier `garmin-data.json` produit s'importe ensuite dans l'app.
 

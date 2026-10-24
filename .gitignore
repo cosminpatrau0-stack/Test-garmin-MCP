@@ -6,6 +6,13 @@ fetcher/.venv/
 # TES données perso : ne JAMAIS les publier sur GitHub
 fetcher/garmin-data.json
 garmin-data.json
+fetcher/garmin-api-debug.json
+garmin-api-debug.json
+
+# Clé Garmin Personal API : ne JAMAIS la committer
+*personal-api-key*
+*.key
+fetcher/key.txt
 
 # Divers
 .DS_Store

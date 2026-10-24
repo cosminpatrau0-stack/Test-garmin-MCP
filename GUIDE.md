@@ -20,7 +20,34 @@ Il y a **2 choses** :
 1. Installe **Python** si tu ne l'as pas : https://www.python.org/downloads/
    - Sur **Windows**, pendant l'installation, **coche la case « Add Python to PATH »**.
 
-### Le plus simple sur Mac : le fichier tout-en-un
+### ⭐ Le mieux : la Garmin Personal API (officielle)
+
+Si tu as une **clé Personal API** Garmin (créée sur
+https://connect.garmin.com/app/settings/personalApiToken), c'est la méthode
+recommandée : officielle, stable, lecture seule, gratuite pour usage perso.
+Ta clé **reste sur ta machine** (jamais dans l'app ni sur GitHub).
+
+- **Mac** : double-clic sur `RunLab-API.command` (via le Terminal la 1re fois,
+  voir dépannage plus bas). Au 1er lancement, colle ta clé : elle est
+  enregistrée dans `~/.config/garmin/connect-personal-api-key` (tu ne la
+  retaperas plus).
+- **Manuel** (Mac/Windows) :
+  ```bash
+  cd fetcher
+  python3 -m pip install -r requirements-api.txt
+  python3 fetch_garmin_api.py
+  ```
+
+Ça crée `garmin-data.json` à importer dans l'app. Pour mettre à jour plus
+tard, relance simplement l'outil (le jeton d'accès de 24 h est renouvelé
+automatiquement).
+
+> La Personal API fournit : activités + dynamique de course, zones FC,
+> sommeil, HRV, stress, FC repos, pas, body battery, âge de forme, VO2max.
+> (Les prédictions de course et les zones de puissance ne sont pas exposées
+> par cette API — elles n'apparaissent que via l'export officiel ZIP.)
+
+### Sinon : le fichier tout-en-un (login Garmin)
 
 Utilise **`RunLab-Garmin.command`** (dossier `fetcher`). C'est un **seul fichier
 autonome** : pose-le où tu veux (ex. le Bureau), il n'a besoin d'aucun fichier

@@ -1,0 +1,1 @@
+garmin-connect-personal-api-python>=0.1.0

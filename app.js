@@ -160,6 +160,32 @@
     const pill = byId("eff-pill"); const cls = dirClass(t.delta, "up");
     pill.className = "pill " + (cls === "up" ? "good" : cls === "down" ? "fatigue" : "warn");
     pill.textContent = t.delta >= 0 ? `↗ +${(t.pct).toFixed(0)}% depuis le début` : `↘ ${(t.pct).toFixed(0)}%`;
+    // nuage allure vs FC (plus haut = plus rapide, plus à gauche = moins de FC)
+    Charts.scatter(byId("chart-paceHr"), f.map(a => ({ x: a.avg_hr, y: a.avg_pace_s_per_km, label: longDate(a.date) + " · " + fmtKm(a.distance_km) + " km" })),
+      { invertY: true, yFmt: v => fmtPace(v), xFmt: v => Math.round(v), xTitle: "FC moy (bpm)", color: "var(--good)" });
+  }
+
+  /* ================= CHARGE HEBDOMADAIRE ================= */
+  function runLoad(a) {
+    if (typeof a.training_load === "number" && a.training_load > 0) return a.training_load;
+    const mins = (a.moving_s || a.duration_s || 0) / 60; const mh = maxHR(), rh = restHR();
+    let it = 0.7; if (a.avg_hr && mh > rh) it = Math.max(0.1, Math.min(1, (a.avg_hr - rh) / (mh - rh)));
+    return mins * it * 2.2;
+  }
+  function weeklyLoad(list, maxW) {
+    const map = new Map();
+    list.forEach(a => { const w = weekStart(a.date).getTime(); map.set(w, (map.get(w) || 0) + runLoad(a)); });
+    const out = []; const now = weekStart(new Date()).getTime();
+    let start = map.size ? Math.min(...map.keys()) : now;
+    for (let w = start; w <= now; w += 7 * DAY) out.push({ ws: w, load: map.get(w) || 0 });
+    return maxW ? out.slice(-maxW) : out;
+  }
+  function renderTrainingLoad(per, all) {
+    const data = weeklyLoad(per.length ? per : all, 16);
+    const card = byId("card-tload");
+    if (data.length < 2) { card.classList.add("hidden"); return; } card.classList.remove("hidden");
+    Charts.bars(byId("chart-tload"), data.map(w => ({ label: dmy(new Date(w.ws)), full: "semaine du " + dmy(new Date(w.ws)), value: Math.round(w.load) })),
+      { valueFmt: v => Math.round(v), labelEvery: 2, color: "var(--fitness)" });
   }
 
   /* ================= DYNAMIQUE DE COURSE ================= */
@@ -301,6 +327,22 @@
       byId("sleep-wrap").classList.remove("hidden");
     } else byId("sleep-wrap").classList.add("hidden");
 
+    // durée de sommeil par nuit (30 dernières)
+    const sld = d.filter(x => x.sleep_s != null).slice(-30);
+    if (sld.length > 1) { byId("sleepdur-wrap").classList.remove("hidden"); Charts.lines(byId("chart-sleepdur"), [{ name: "Sommeil", color: "var(--fitness)", fill: true, points: sld.map(x => ({ y: x.sleep_s / 3600 })) }], { yFmt: v => v.toFixed(1) + "h", xLabels: sld.map(x => dmy(x.d)) }); }
+    else byId("sleepdur-wrap").classList.add("hidden");
+
+    // stress & body battery (30 derniers jours, même échelle 0-100)
+    const wl = d.slice(-30);
+    const hasStress = wl.some(x => x.stress_avg != null), hasBB = wl.some(x => x.body_battery_high != null);
+    if (hasStress || hasBB) {
+      byId("wellness-wrap").classList.remove("hidden");
+      const sArr = [];
+      if (hasStress) sArr.push({ name: "Stress", color: "var(--fatigue)", points: wl.map(x => ({ y: x.stress_avg != null ? x.stress_avg : null })) });
+      if (hasBB) sArr.push({ name: "Body Battery", color: "var(--good)", points: wl.map(x => ({ y: x.body_battery_high != null ? x.body_battery_high : null })) });
+      Charts.lines(byId("chart-wellness"), sArr, { yFmt: v => Math.round(v), xLabels: wl.map(x => dmy(x.d)), min: 0, max: 100 });
+    } else byId("wellness-wrap").classList.add("hidden");
+
     // tuiles
     const last = n => d.slice(-n);
     const avg = (arr, k) => { const v = arr.map(x => x[k]).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
@@ -405,6 +447,7 @@
     renderProgression();
     renderVolume(per, r);
     renderLoad();
+    renderTrainingLoad(per, r);
     renderPace(per);
     renderEfficiency(per);
     renderDynamics(per);

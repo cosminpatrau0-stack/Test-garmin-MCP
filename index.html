@@ -92,6 +92,13 @@
         <div class="legend"><span><i style="background:var(--fitness)"></i> Forme</span><span><i style="background:var(--fatigue)"></i> Fatigue</span></div>
       </div>
 
+      <!-- CHARGE HEBDO -->
+      <div class="card hidden" id="card-tload">
+        <h2>Charge d'entraînement hebdomadaire</h2>
+        <div class="sub">Somme de la charge par semaine (basée sur durée × intensité FC)</div>
+        <div class="chart" id="chart-tload"></div>
+      </div>
+
       <!-- ALLURE -->
       <div class="card">
         <h2>Tendance d'allure</h2>
@@ -106,6 +113,10 @@
           <span class="pill good" id="eff-pill">—</span>
         </div>
         <div class="chart" id="chart-eff"></div>
+        <div class="divider"></div>
+        <div class="chart-title">Allure vs fréquence cardiaque</div>
+        <div class="sub">Chaque point = une sortie. En haut à gauche = rapide et peu de FC (idéal).</div>
+        <div class="chart" id="chart-paceHr"></div>
       </div>
 
       <!-- DYNAMIQUE DE COURSE -->
@@ -152,6 +163,8 @@
         <div id="hrv-wrap"><div class="chart-title">Variabilité cardiaque (HRV)</div><div class="chart" id="chart-hrv"></div></div>
         <div id="rhr-wrap"><div class="divider"></div><div class="chart-title">FC de repos</div><div class="chart" id="chart-rhr"></div></div>
         <div id="sleep-wrap"><div class="divider"></div><div class="chart-title">Stades de sommeil (moyenne/nuit)</div><div class="sub" id="sleep-note"></div><div class="chart" id="chart-sleep"></div></div>
+        <div id="sleepdur-wrap"><div class="divider"></div><div class="chart-title">Durée de sommeil par nuit</div><div class="chart" id="chart-sleepdur"></div></div>
+        <div id="wellness-wrap"><div class="divider"></div><div class="chart-title">Stress &amp; Body Battery</div><div class="chart" id="chart-wellness"></div><div class="legend"><span><i style="background:var(--fatigue)"></i> Stress</span><span><i style="background:var(--good)"></i> Body Battery</span></div></div>
       </div>
 
       <!-- SORTIES -->

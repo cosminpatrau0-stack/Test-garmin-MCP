@@ -1,5 +1,5 @@
 /* RunLab — service worker : rend l'app installable et utilisable hors-ligne. */
-const CACHE = "runlab-v3";
+const CACHE = "runlab-v4";
 const SHELL = [
   "./",
   "index.html",

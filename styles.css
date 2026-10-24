@@ -195,6 +195,9 @@ main { max-width: 960px; margin: 0 auto; padding: 16px; }
 .charttip span { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 .charttip i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
 .chart svg { touch-action: pan-y; }
+/* éviter la sélection de texte/éléments quand on touche les graphiques et le tableau de bord */
+#view-dash { -webkit-user-select: none; -moz-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#view-dash input, #view-dash select, .modal textarea, #report-text { -webkit-user-select: text; user-select: text; }
 
 .chart-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
 .divider { height: 1px; background: var(--border); margin: 18px 0 14px; }

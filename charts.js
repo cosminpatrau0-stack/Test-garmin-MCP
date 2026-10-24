@@ -56,7 +56,7 @@
     }
     function hide() { rects.forEach(r => r.setAttribute("opacity", 1)); tip.style.display = "none"; }
     hit.addEventListener("pointermove", e => show(e.clientX));
-    hit.addEventListener("pointerdown", e => show(e.clientX));
+    hit.addEventListener("pointerdown", e => { e.preventDefault(); show(e.clientX); });
     hit.addEventListener("pointerleave", hide);
     node.appendChild(svg);
   }
@@ -119,7 +119,7 @@
     }
     function hide() { cross.setAttribute("opacity", 0); dots.forEach(d => d.setAttribute("opacity", 0)); tip.style.display = "none"; }
     hit.addEventListener("pointermove", e => show(e.clientX));
-    hit.addEventListener("pointerdown", e => show(e.clientX));
+    hit.addEventListener("pointerdown", e => { e.preventDefault(); show(e.clientX); });
     hit.addEventListener("pointerleave", hide);
     node.appendChild(svg);
   }
@@ -161,8 +161,45 @@
     node.appendChild(svg);
   }
 
+  /* -------- nuage de points (interactif) -------- */
+  function scatter(node, pts, opts) {
+    opts = opts || {}; clear(node);
+    const P = pts.filter(p => p.x != null && p.y != null && isFinite(p.x) && isFinite(p.y));
+    if (P.length < 2) { node.appendChild(empty()); return; }
+    const svg = root();
+    let xmin = Math.min(...P.map(p => p.x)), xmax = Math.max(...P.map(p => p.x));
+    let ymin = Math.min(...P.map(p => p.y)), ymax = Math.max(...P.map(p => p.y));
+    const px = (xmax - xmin) * 0.08 || 1, py = (ymax - ymin) * 0.12 || 1;
+    xmin -= px; xmax += px; ymin -= py; ymax += py;
+    const xFmt = opts.xFmt || (v => Math.round(v)), yFmt = opts.yFmt || (v => Math.round(v));
+    yAxis(svg, ymin, ymax, opts.invertY ? (v => yFmt(ymin + ymax - v)) : yFmt);
+    const xFor = v => PAD.l + (W - PAD.l - PAD.r) * ((v - xmin) / (xmax - xmin));
+    const yFor = v => { const vv = opts.invertY ? (ymin + ymax - v) : v; return H - PAD.b - (H - PAD.b - PAD.t) * ((vv - ymin) / (ymax - ymin)); };
+    for (let i = 0; i <= 4; i++) { const v = xmin + (xmax - xmin) * (i / 4); svg.appendChild(el("text", { x: xFor(v), y: H - PAD.b + 16, "text-anchor": "middle", "font-size": 10.5, fill: "var(--muted)" }, xFmt(v))); }
+    if (opts.xTitle) svg.appendChild(el("text", { x: (W - PAD.r + PAD.l) / 2, y: H - 2, "text-anchor": "middle", "font-size": 10.5, fill: "var(--muted)" }, opts.xTitle));
+    const color = opts.color || "var(--accent)";
+    const dots = P.map(p => { const c = el("circle", { cx: xFor(p.x), cy: yFor(p.y), r: 4, fill: color, opacity: 0.72 }); svg.appendChild(c); return c; });
+    const tip = tipEl(node);
+    const hit = el("rect", { x: 0, y: 0, width: W, height: H, fill: "transparent" }); svg.appendChild(hit);
+    function show(cx, cy) {
+      const rc = svg.getBoundingClientRect();
+      const mx = (cx - rc.left) / rc.width * W, my = (cy - rc.top) / rc.height * H;
+      let bi = 0, bd = Infinity;
+      P.forEach((p, i) => { const dx = xFor(p.x) - mx, dy = yFor(p.y) - my, d = dx * dx + dy * dy; if (d < bd) { bd = d; bi = i; } });
+      dots.forEach((c, i) => { c.setAttribute("r", i === bi ? 6 : 4); c.setAttribute("opacity", i === bi ? 1 : 0.4); });
+      const p = P[bi];
+      tip.innerHTML = `<div class="tt-x">${esc(p.label || "")}</div><span><i style="background:${color}"></i>${opts.xTitle || "x"} ${xFmt(p.x)} · ${yFmt(p.y)}</span>`;
+      tip.style.display = "block"; tip.style.left = Math.max(4, Math.min(96, xFor(p.x) / W * 100)) + "%";
+    }
+    function hide() { dots.forEach(c => { c.setAttribute("r", 4); c.setAttribute("opacity", 0.72); }); tip.style.display = "none"; }
+    hit.addEventListener("pointermove", e => show(e.clientX, e.clientY));
+    hit.addEventListener("pointerdown", e => { e.preventDefault(); show(e.clientX, e.clientY); });
+    hit.addEventListener("pointerleave", hide);
+    node.appendChild(svg);
+  }
+
   function root() { return el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", preserveAspectRatio: "xMidYMid meet" }); }
   function empty() { const d = document.createElement("div"); d.className = "muted small"; d.style.padding = "28px 0"; d.style.textAlign = "center"; d.textContent = "Pas assez de données pour cette période."; return d; }
 
-  window.Charts = { bars, lines, stackedBar, spark };
+  window.Charts = { bars, lines, stackedBar, spark, scatter };
 })();

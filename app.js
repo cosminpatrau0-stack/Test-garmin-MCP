@@ -391,58 +391,155 @@
   }
 
   /* ================= BILAN CLAUDE ================= */
+  function mean(a) { const v = a.filter(x => x != null && isFinite(x)); return v.length ? v.reduce((x, y) => x + y, 0) / v.length : null; }
+  function sign(n, d) { return (n > 0 ? "+" : "") + (d != null ? n.toFixed(d) : Math.round(n)); }
+
   function buildReport() {
     const r = runs(), per = inPeriod(r, settings.periodDays);
     const pName = { 28: "4 dernières semaines", 84: "12 dernières semaines", 365: "12 derniers mois" }[settings.periodDays] || "toute la période";
-    const L = [];
-    L.push("# Mon bilan running détaillé (export RunLab)\n");
+    const L = [], alerts = [];
+    const now = Date.now();
+    L.push("# Bilan running détaillé — données Garmin (RunLab)\n");
+    L.push(`_Période analysée : ${pName}. Les chiffres viennent de ma montre Garmin ; indique quand tu estimes plutôt que tu mesures._\n`);
+
+    // ---------- Profil ----------
     const p = profile(); const bits = [];
     if (p.full_name) bits.push(p.full_name);
+    if (p.birth_date) { const age = Math.floor((now - new Date(p.birth_date)) / 31557600000); if (age > 0 && age < 100) bits.push(age + " ans"); }
+    if (p.gender) bits.push(p.gender === "MALE" ? "homme" : p.gender === "FEMALE" ? "femme" : p.gender);
     if (p.vo2max_running) bits.push("VO2max " + p.vo2max_running);
     if (p.fitness_age) bits.push("âge de forme " + p.fitness_age + " ans");
-    if (p.resting_hr) bits.push("FC repos " + p.resting_hr + " bpm");
+    if (p.max_hr) bits.push("FC max " + p.max_hr);
+    if (p.resting_hr) bits.push("FC repos " + p.resting_hr);
+    if (p.hr_zone_floors) bits.push("seuils FC " + p.hr_zone_floors.filter(Boolean).join("/"));
     if (bits.length) L.push("**Profil :** " + bits.join(" · ") + "\n");
 
-    L.push(`## Volume (${pName})`);
-    L.push(`- ${fmtKm(sumDist(per))} km · ${per.length} sorties · ${fmtDur(per.reduce((a, b) => a + (b.moving_s || 0), 0))} · allure moy ${fmtPace(weightedPace(per))}/km`);
-    weeklyVolume(per.length ? per : r, 8).forEach(w => L.push(`  - sem. ${dmy(new Date(w.ws))} : ${fmtKm(w.km)} km`));
+    // ---------- Vue d'ensemble ----------
+    const totS = per.reduce((a, b) => a + (b.moving_s || 0), 0);
+    const totElev = per.reduce((a, b) => a + (b.elevation_gain_m || 0), 0);
+    const gapAvg = (() => { let d = 0, t = 0; per.forEach(a => { if (a.gap_pace_s_per_km && a.distance_km) { d += a.distance_km; t += a.gap_pace_s_per_km * a.distance_km; } }); return d ? t / d : null; })();
+    L.push("## Vue d'ensemble");
+    L.push(`- Distance : ${fmtKm(sumDist(per))} km · ${per.length} sorties · ${fmtDur(totS)}`);
+    L.push(`- Allure moyenne : ${fmtPace(weightedPace(per))}/km${gapAvg ? ` (ajustée au dénivelé ${fmtPace(gapAvg)}/km)` : ""}`);
+    if (totElev) L.push(`- Dénivelé positif cumulé : +${Math.round(totElev)} m`);
+    const cadAvg = mean(per.map(a => a.avg_cadence));
+    if (cadAvg) L.push(`- Cadence moyenne : ${Math.round(cadAvg)} spm`);
 
+    // ---------- Volume & charge ----------
+    L.push("\n## Volume & charge d'entraînement");
+    weeklyVolume(per.length ? per : r, 12).forEach(w => L.push(`- sem. ${dmy(new Date(w.ws))} : ${fmtKm(w.km)} km`));
+    const last7 = r.filter(a => a.date.getTime() >= now - 7 * DAY).reduce((x, a) => x + a.distance_km, 0);
+    const prior28 = r.filter(a => { const t = a.date.getTime(); return t < now - 7 * DAY && t >= now - 35 * DAY; }).reduce((x, a) => x + a.distance_km, 0) / 4;
+    if (prior28 > 0) {
+      const ramp = (last7 / prior28 - 1) * 100;
+      L.push(`- Dernière semaine : ${fmtKm(last7)} km vs moyenne des 4 précédentes ${fmtKm(prior28)} km (${sign(ramp)}%)`);
+      if (ramp > 15) alerts.push(`Montée de volume rapide (${sign(ramp)}% cette semaine) → risque de blessure si ça continue.`);
+    }
+    const s = pmc();
+    if (s && s.length) {
+      const t = s[s.length - 1];
+      L.push(`- Charge (modèle PMC) : Fitness/CTL ${Math.round(t.ctl)} · Fatigue/ATL ${Math.round(t.atl)} · Fraîcheur/TSB ${sign(t.tsb)} → ${formLabel(t.tsb).t}`);
+      if (t.ctl > 0) {
+        const acwr = t.atl / t.ctl;
+        let zone = acwr < 0.8 ? "charge faible" : acwr <= 1.3 ? "zone optimale" : acwr <= 1.5 ? "élevée" : "risque élevé";
+        L.push(`- Ratio charge aiguë/chronique (ACWR) : ${acwr.toFixed(2)} (${zone})`);
+        if (acwr > 1.5) alerts.push(`ACWR ${acwr.toFixed(2)} > 1.5 : fatigue aiguë élevée, prudence.`);
+      }
+      if (t.tsb < -25) alerts.push(`Fraîcheur très négative (TSB ${Math.round(t.tsb)}) : fatigue importante, prévoir de la récup.`);
+    }
+
+    // ---------- Progression ----------
     const vo2 = series("vo2max"), rp = series("race_predictions"), fa = series("fitness_age");
     if (vo2 || rp || fa) {
       L.push("\n## Progression");
-      if (vo2) { const t = trend(vo2.map(x => x.value)); L.push(`- VO2max : ${t.current} (départ ${t.start}, ${t.delta >= 0 ? "+" : ""}${t.delta})`); }
-      if (fa) { const f = fa[fa.length - 1]; L.push(`- Âge de forme : ${f.fitness_age} ans (âge réel ${f.chrono_age})`); }
-      if (rp) { const l = rp[rp.length - 1]; L.push(`- Prédictions course : 5K ${fmtRace(l.t5k)} · 10K ${fmtRace(l.t10k)} · semi ${fmtRace(l.half)} · marathon ${fmtRace(l.marathon)}`); }
+      if (vo2) { const t = trend(vo2.map(x => x.value)); L.push(`- VO2max : ${t.current} (départ ${t.start}, ${sign(t.delta)} sur la période)`); }
+      if (fa) { const f = fa[fa.length - 1]; L.push(`- Âge de forme : ${f.fitness_age} ans${f.chrono_age ? ` (âge réel ${f.chrono_age})` : ""}`); }
+      if (rp) { const l = rp[rp.length - 1], f0 = rp[0]; L.push(`- Prédictions de course (Garmin) : 5K ${fmtRace(l.t5k)} · 10K ${fmtRace(l.t10k)} · semi ${fmtRace(l.half)} · marathon ${fmtRace(l.marathon)}`); if (f0 && f0.t10k) L.push(`  (10K estimé il y a ${rp.length} relevés : ${fmtRace(f0.t10k)} → ${l.t10k < f0.t10k ? "amélioration" : "recul"})`); }
     }
 
-    const s = pmc();
-    if (s && s.length) { const t = s[s.length - 1]; L.push("\n## Charge & forme (PMC)"); L.push(`- Fitness ${Math.round(t.ctl)} · Fatigue ${Math.round(t.atl)} · Fraîcheur ${t.tsb > 0 ? "+" : ""}${Math.round(t.tsb)} (${formLabel(t.tsb).t})`); }
-
-    // efficacité
+    // ---------- Efficacité aérobie ----------
     const fe = per.filter(a => a.avg_hr && a.avg_pace_s_per_km && a.distance_km >= 1.5);
-    if (fe.length >= 3) { const ef = a => (60000 / a.avg_pace_s_per_km) / a.avg_hr; const t = trend(fe.map(ef)); L.push("\n## Efficacité aérobie"); L.push(`- Vitesse par battement : ${t.current.toFixed(2)} (${t.pct >= 0 ? "+" : ""}${t.pct.toFixed(0)}% depuis le début → ${t.pct >= 0 ? "tu cours plus vite à FC égale" : "en baisse"})`); }
-
-    // dynamique
-    const dyn = DYN.map(m => { const v = per.filter(a => a[m.key] != null).map(a => a[m.key]); if (v.length < 2) return null; const t = trend(v); return `- ${m.label} : ${m.fmt(t.current)} ${m.unit} (moy ${m.fmt(v.reduce((a, b) => a + b, 0) / v.length)})`; }).filter(Boolean);
-    if (dyn.length) { L.push("\n## Dynamique de course"); dyn.forEach(x => L.push(x)); }
-
-    // zones / polarisation
-    const z = aggZones(per, "hr_zones"); if (z) { const tot = z.reduce((a, b) => a + b, 0) || 1; const names = ["Z1", "Z2", "Z3", "Z4", "Z5"]; L.push("\n## Zones de FC"); z.forEach((x, i) => { if (x) L.push(`- ${names[i]} : ${fmtDur(x)} (${Math.round(x / tot * 100)}%)`); }); const easy = Math.round((z[0] + z[1]) / tot * 100); L.push(`- Répartition : ${easy}% facile / ${Math.round(z[2] / tot * 100)}% modéré / ${Math.round((z[3] + z[4]) / tot * 100)}% intense`); }
-
-    // récup
-    const d = dailySorted(); const hrv = series("hrv");
-    if (d.length || hrv) {
-      L.push("\n## Récupération");
-      const rhr = d.filter(x => x.resting_hr != null); if (rhr.length) L.push(`- FC repos actuelle : ${rhr[rhr.length - 1].resting_hr} bpm`);
-      if (hrv && hrv.length) { const t = trend(hrv.map(x => x.value)); L.push(`- HRV : ${t.current} ms (départ ${t.start})`); }
-      const sl = d.filter(x => x.sleep_s != null).slice(-7); if (sl.length) L.push(`- Sommeil moyen 7j : ${fmtDur(sl.reduce((a, b) => a + b.sleep_s, 0) / sl.length)}`);
+    if (fe.length >= 3) {
+      const ef = a => (60000 / a.avg_pace_s_per_km) / a.avg_hr;
+      const t = trend(fe.map(ef));
+      L.push("\n## Efficacité aérobie");
+      L.push(`- Indice vitesse/FC : ${t.current.toFixed(2)} (${sign(t.pct)}% depuis le début → ${t.pct >= 2 ? "tu cours plus vite à FC égale, bon signe de progrès" : t.pct <= -2 ? "en baisse (fatigue, chaleur ou forme en recul ?)" : "stable"})`);
     }
 
-    L.push("\n## Records");
+    // ---------- Dynamique de course ----------
+    const dynLines = DYN.map(m => {
+      const v = per.filter(a => a[m.key] != null).map(a => a[m.key]);
+      if (v.length < 2) return null;
+      const t = trend(v), av = mean(v);
+      let note = "";
+      if (m.dir !== "neutral") { const good = m.dir === "up" ? t.delta > 0 : t.delta < 0; note = Math.abs(t.delta) < (av * 0.01) ? " (stable)" : good ? " ✅ évolue dans le bon sens" : " ⚠️ à surveiller"; }
+      return `- ${m.label} : ${m.fmt(t.current)} ${m.unit} (moyenne ${m.fmt(av)}, tendance ${sign(t.delta, m.key === "avg_stride_m" ? 2 : 0)}${note})`;
+    }).filter(Boolean);
+    if (dynLines.length) { L.push("\n## Dynamique de course"); dynLines.forEach(x => L.push(x)); L.push("  _(cadence ↑, foulée ↑, temps de contact au sol ↓, oscillation verticale ↓ = plus économique)_"); }
+
+    // ---------- Intensité ----------
+    const z = aggZones(per, "hr_zones");
+    if (z) {
+      const tot = z.reduce((a, b) => a + b, 0) || 1, names = ["Z1 récup", "Z2 endurance", "Z3 tempo", "Z4 seuil", "Z5 VO2max"];
+      L.push("\n## Répartition de l'intensité (zones FC)");
+      z.forEach((x, i) => { if (x) L.push(`- ${names[i]} : ${fmtDur(x)} (${Math.round(x / tot * 100)}%)`); });
+      const easy = Math.round((z[0] + z[1]) / tot * 100), hard = Math.round((z[3] + z[4]) / tot * 100);
+      L.push(`- Équilibre : ${easy}% facile / ${Math.round(z[2] / tot * 100)}% modéré / ${hard}% intense`);
+      if (easy < 70) alerts.push(`Seulement ${easy}% du temps en facile (idéal ~80%) : trop d'intensité, risque de stagnation/fatigue.`);
+    }
+    const pz = aggZones(per, "power_zones");
+    if (pz) { const tot = pz.reduce((a, b) => a + b, 0) || 1; L.push("- Zones de puissance : " + pz.map((x, i) => `Z${i + 1} ${Math.round(x / tot * 100)}%`).join(" · ")); }
+    const dd = dailySorted();
+    const im = dd.filter(x => x.intensity_mod != null || x.intensity_vig != null).slice(-7);
+    if (im.length) { const wk = im.reduce((a, b) => a + (b.intensity_mod || 0) + (b.intensity_vig || 0) * 2, 0); L.push(`- Minutes d'intensité (7 derniers jours) : ${Math.round(wk)} (objectif OMS 150/sem)`); }
+
+    // ---------- Récupération ----------
+    const hrv = series("hrv");
+    if (dd.length || hrv) {
+      L.push("\n## Récupération");
+      const rhr = dd.filter(x => x.resting_hr != null);
+      if (rhr.length) { const cur = rhr[rhr.length - 1].resting_hr, m30 = mean(rhr.slice(-30).map(x => x.resting_hr)); L.push(`- FC de repos : ${cur} bpm (moyenne 30j ${m30 ? Math.round(m30) : "—"})`); if (m30 && cur > m30 + 3) alerts.push(`FC de repos (${cur}) au-dessus de ta moyenne : fatigue ou début de maladie possible.`); }
+      if (hrv && hrv.length) { const cur = hrv[hrv.length - 1].value, base = mean(hrv.map(x => x.value)); L.push(`- HRV (variabilité cardiaque) : ${cur} ms (base ${base ? Math.round(base) : "—"} ms)`); if (base && cur < base * 0.9) alerts.push(`HRV (${cur}) sous ta ligne de base : récupération incomplète.`); }
+      const sl = dd.filter(x => x.sleep_s != null).slice(-7);
+      if (sl.length) { const av = mean(sl.map(x => x.sleep_s)); const deep = mean(sl.map(x => x.deep_s)), light = mean(sl.map(x => x.light_s)), rem = mean(sl.map(x => x.rem_s)); const sc = mean(sl.map(x => x.sleep_score)); L.push(`- Sommeil (7j) : ${fmtDur(av)}/nuit${sc ? `, score ${Math.round(sc)}/100` : ""}${deep ? ` — profond ${fmtDur(deep)}, léger ${fmtDur(light)}, paradoxal ${fmtDur(rem)}` : ""}`); if (av < 25200) alerts.push(`Sommeil moyen ${fmtDur(av)} (< 7h) : la récupération et la progression en pâtissent.`); }
+      const st = mean(dd.slice(-7).map(x => x.stress_avg)); if (st != null) L.push(`- Stress moyen (7j) : ${Math.round(st)}/100`);
+      const bb = mean(dd.slice(-7).map(x => x.body_battery_high)); if (bb != null) L.push(`- Body Battery (recharge max 7j) : ${Math.round(bb)}`);
+      const sp = mean(dd.slice(-7).map(x => x.spo2_avg)); if (sp != null) L.push(`- SpO2 nocturne (7j) : ${Math.round(sp)}%`);
+    }
+
+    // ---------- Consistance ----------
+    const d28 = r.filter(a => a.date.getTime() >= now - 28 * DAY);
+    const lastRun = r.length ? r[r.length - 1].date : null;
+    L.push("\n## Régularité");
+    L.push(`- ${(d28.length / 4).toFixed(1)} sorties/semaine (28 derniers jours)`);
+    if (lastRun) L.push(`- Dernière sortie il y a ${Math.round((now - lastRun.getTime()) / DAY)} jour(s)`);
+
+    // ---------- Records ----------
+    L.push("\n## Records personnels");
     records(r).forEach(x => L.push(`- ${x.k} : ${x.v} (${x.d})`));
 
+    // ---------- Dernières sorties ----------
+    L.push("\n## Dernières sorties (détail)");
+    [...per].sort((a, b) => b.date - a.date).slice(0, 12).forEach(a => {
+      const x = [`${longDate(a.date)} — ${fmtKm(a.distance_km)} km en ${fmtDur(a.moving_s)} (${fmtPace(a.avg_pace_s_per_km)}/km`];
+      if (a.avg_hr) x.push(`${a.avg_hr} bpm`);
+      if (a.avg_cadence) x.push(`${a.avg_cadence} spm`);
+      if (a.avg_power) x.push(`${a.avg_power} W`);
+      if (a.aerobic_te) x.push(`TE ${a.aerobic_te}`);
+      L.push("- " + x.join(", ") + ")");
+    });
+
+    // ---------- Alertes calculées ----------
+    if (alerts.length) { L.push("\n## ⚠️ Signaux repérés automatiquement"); alerts.forEach(a => L.push(`- ${a}`)); }
+
+    // ---------- Demande ----------
     L.push("\n---");
-    L.push("**Analyse ma progression (VO2max, prédictions, efficacité aérobie), ma dynamique de course, mon équilibre d'intensité et ma récupération. Repère mes points forts et mes points à améliorer, et propose-moi un plan d'entraînement détaillé sur 2 semaines.**");
+    L.push("**Tu es mon coach de course à pied. À partir de TOUTES ces données Garmin :**");
+    L.push("1. **Analyse chaque domaine** (progression VO2max & prédictions, volume & charge/ACWR, efficacité aérobie, dynamique de course, équilibre d'intensité, récupération HRV/sommeil/FC repos, régularité) — dis pour chacun si c'est bon, moyen ou à corriger, et pourquoi.");
+    L.push("2. **Donne mes 3 points forts et mes 3 priorités d'amélioration**, chiffrées.");
+    L.push("3. **Évalue mon risque de blessure/surmenage** à partir de la charge, de l'ACWR, de la récup et de la montée de volume.");
+    L.push("4. **Propose un plan détaillé sur 2 semaines**, séance par séance (jour, type, distance/durée, allures ou zones FC cibles basées sur mes seuils ci-dessus), cohérent avec ma forme actuelle et un objectif de progression raisonnable.");
+    L.push("5. Termine par **3 conseils concrets** (technique, récupération, nutrition/hydratation) adaptés à mes chiffres.");
     return L.join("\n");
   }
   function openReport() { byId("report-text").value = buildReport(); byId("modal").classList.add("open"); }
